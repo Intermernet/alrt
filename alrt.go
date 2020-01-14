@@ -28,14 +28,14 @@ func randomTempo(min, max int) int {
 func updateTempo(tempo int, data []byte) []byte {
 	tempoRe := regexp.MustCompile(`<Tempo>\s+<LomId Value="(\d+)" />\s+<Manual Value="(\d+)" />`)
 	tVals := tempoRe.FindAllSubmatchIndex(data, -1)
-	tIndeces := tVals[0]
-	lomVal := data[tIndeces[2]:tIndeces[3]]
+	tIndices := tVals[0]
+	lomVal := data[tIndices[2]:tIndices[3]]
 	repl := fmt.Sprintf("<Tempo>\n\t\t\t\t\t\t<LomId Value=\"%s\" />\n\t\t\t\t\t\t<Manual Value=\"%d\" />", string(lomVal), tempo)
 	data = tempoRe.ReplaceAllLiteral(data, []byte(repl))
 	aEventRe := regexp.MustCompile(`<AutomationEnvelope Id="1">\s+<EnvelopeTarget>\s+<PointeeId Value="(\d+)" />\s+</EnvelopeTarget>\s+<Automation>\s+<Events>\s+<FloatEvent Id="(\d+)" Time="(-*\d+)" Value="(\d+)" />`)
 	aVals := aEventRe.FindAllSubmatchIndex(data, -1)
-	aIndeces := aVals[0]
-	aPointeeIDVal, aFEventID, aTime := data[aIndeces[2]:aIndeces[3]], data[aIndeces[4]:aIndeces[5]], data[aIndeces[6]:aIndeces[7]]
+	aIndices := aVals[0]
+	aPointeeIDVal, aFEventID, aTime := data[aIndices[2]:aIndices[3]], data[aIndices[4]:aIndices[5]], data[aIndices[6]:aIndices[7]]
 	repl = fmt.Sprintf("<AutomationEnvelope Id=\"1\">\n\t\t\t\t\t\t<EnvelopeTarget>\n\t\t\t\t\t\t\t<PointeeId Value=\"%s\" />\n\t\t\t\t\t\t</EnvelopeTarget>\n\t\t\t\t\t\t<Automation>\n\t\t\t\t\t\t\t<Events>\n\t\t\t\t\t\t\t\t<FloatEvent Id=\"%s\" Time=\"%s\" Value=\"%d\" />", string(aPointeeIDVal), string(aFEventID), string(aTime), tempo)
 	data = aEventRe.ReplaceAllLiteral(data, []byte(repl))
 	return data
