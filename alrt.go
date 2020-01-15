@@ -137,5 +137,5 @@ func main() {
 		fmt.Println(fmt.Errorf("Could not close gzip writer: %v", err))
 		os.Exit(1)
 	}
-	fmt.Printf("Successfully wrote %d to %s\n", nz, templLoc)
+	fmt.Printf("Successfully wrote %d bytes (uncompressed) to %s\n", nz, templLoc)
 }
