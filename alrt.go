@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"regexp"
@@ -59,7 +58,8 @@ func listVersions() ([]string, error) {
 func main() {
 	vers, err := listVersions()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(fmt.Errorf("Could not enumerate installed Ableton Live versions"))
+		os.Exit(1)
 	}
 	latest := vers[len(vers)-1]
 	ver := flag.String("version", latest, "Version of Ableton Live to target. Defaults to latest version.\nUSAGE alrt -version \""+latest+"\"")
