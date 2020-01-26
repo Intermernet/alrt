@@ -11,23 +11,26 @@ import (
 	"fyne.io/fyne/widget"
 )
 
-func runGUI(a fyne.App, minBPM, maxBPM int) int {
+func runGUI(a fyne.App) int {
 	var rt int
-	//a := app.New()
 	a.Settings().SetTheme(theme.LightTheme())
-
-	//fmt.Println(a.Settings().Scale())
 
 	w := a.NewWindow("Ableton Live Tempo Randomizer")
 
+	verLabel := widget.NewLabel("Installed Versions")
+	versions := widget.NewSelect(vers, func(string) {})
+	versions.SetSelected(*ver)
+	versions.OnChanged = func(string) {
+		*ver = versions.Selected
+	}
 	minLabel := widget.NewLabel("Minimum BPM")
 	maxLabel := widget.NewLabel("Maximum BPM")
 
 	minSlider := widget.NewSlider(20, 999)
-	min := widget.NewEntry()
+	minEntry := widget.NewEntry()
 
 	maxSlider := widget.NewSlider(20, 999)
-	max := widget.NewEntry()
+	maxEntry := widget.NewEntry()
 
 	randomizer := widget.NewButton("Gerenate Random BPM", func() {
 		rt = randomTempo(int(minSlider.Value), int(maxSlider.Value))
@@ -39,74 +42,74 @@ func runGUI(a fyne.App, minBPM, maxBPM int) int {
 		os.Exit(0)
 	})
 
-	minSlider.Value = float64(minBPM)
-	min.SetText(fmt.Sprintf("%d", minBPM))
+	minSlider.Value = float64(*min)
+	minEntry.SetText(fmt.Sprintf("%d", *min))
 
-	maxSlider.Value = float64(maxBPM)
-	max.SetText(fmt.Sprintf("%d", maxBPM))
+	maxSlider.Value = float64(*max)
+	maxEntry.SetText(fmt.Sprintf("%d", *max))
 
 	minSlider.OnChanged = func(float64) {
 		if minSlider.Value >= maxSlider.Value {
 			maxSlider.Value = minSlider.Value
-			max.SetText(fmt.Sprintf("%.f", minSlider.Value))
+			maxEntry.SetText(fmt.Sprintf("%.f", minSlider.Value))
 		}
-		min.SetText(fmt.Sprintf("%.f", minSlider.Value))
+		minEntry.SetText(fmt.Sprintf("%.f", minSlider.Value))
 	}
-	min.OnChanged = func(string) {
-		minVal, err := strconv.Atoi(min.Text)
+	minEntry.OnChanged = func(string) {
+		minVal, err := strconv.Atoi(minEntry.Text)
 		if err != nil {
-			min.SetText("")
+			minEntry.SetText("")
 			return
 		}
 		if minVal >= 20 && minVal <= 999 {
 			if minVal >= int(maxSlider.Value) {
 				maxSlider.Value = minSlider.Value
-				max.SetText(fmt.Sprintf("%.f", minSlider.Value))
+				maxEntry.SetText(fmt.Sprintf("%.f", minSlider.Value))
 			}
 			minSlider.Value = float64(minVal)
 			minSlider.Refresh()
 		}
 		if minVal > 999 {
-			min.SetText(fmt.Sprintf("%d", 999))
+			minEntry.SetText(fmt.Sprintf("%d", 999))
 		}
 	}
 
 	maxSlider.OnChanged = func(float64) {
 		if maxSlider.Value <= minSlider.Value {
 			minSlider.Value = maxSlider.Value
-			min.SetText(fmt.Sprintf("%.f", maxSlider.Value))
+			minEntry.SetText(fmt.Sprintf("%.f", maxSlider.Value))
 		}
-		max.SetText(fmt.Sprintf("%.f", maxSlider.Value))
+		maxEntry.SetText(fmt.Sprintf("%.f", maxSlider.Value))
 	}
-	max.OnChanged = func(string) {
-		maxVal, err := strconv.Atoi(max.Text)
+	maxEntry.OnChanged = func(string) {
+		maxVal, err := strconv.Atoi(maxEntry.Text)
 		if err != nil {
-			min.SetText("")
+			minEntry.SetText("")
 			return
 		}
 		if maxVal >= 20 && maxVal <= 999 {
 			if maxVal <= int(minSlider.Value) {
 				minSlider.Value = maxSlider.Value
-				min.SetText(fmt.Sprintf("%.f", maxSlider.Value))
+				minEntry.SetText(fmt.Sprintf("%.f", maxSlider.Value))
 			}
 			maxSlider.Value = float64(maxVal)
 			maxSlider.Refresh()
 		}
 		if maxVal > 999 {
-			max.SetText(fmt.Sprintf("%d", 999))
+			maxEntry.SetText(fmt.Sprintf("%d", 999))
 		}
 	}
 
 	minBox := widget.NewVBox(
 		minLabel,
 		minSlider,
-		min,
+		minEntry,
 	)
 
 	maxBox := widget.NewVBox(
 		maxLabel,
 		maxSlider,
-		max,
+		maxEntry,
 	)
 
 	controls := fyne.NewContainerWithLayout(
@@ -117,6 +120,8 @@ func runGUI(a fyne.App, minBPM, maxBPM int) int {
 
 	all := fyne.NewContainerWithLayout(
 		layout.NewVBoxLayout(),
+		verLabel,
+		versions,
 		controls,
 		randomizer,
 		quitButton,

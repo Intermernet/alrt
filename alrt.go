@@ -56,18 +56,26 @@ func listVersions() ([]string, error) {
 	return fs, nil
 }
 
+var (
+	min  *int
+	max  *int
+	ver  *string
+	vers []string
+	err  error
+)
+
 func main() {
-	vers, err := listVersions()
+	vers, err = listVersions()
 	if err != nil {
 		fmt.Println(fmt.Errorf("Could not enumerate installed Ableton Live versions"))
 		os.Exit(1)
 	}
 	latest := vers[len(vers)-1]
 	cli := flag.Bool("cli", false, "Run CLI Version")
-	ver := flag.String("version", latest, "Version of Ableton Live to target. Defaults to latest version.\nUSAGE alrt -version \""+latest+"\"")
 	listVer := flag.Bool("list", false, "List installed versions of Ableton Live")
-	min := flag.Int("min", 110, "The minimum BPM")
-	max := flag.Int("max", 130, "The maximum BPM")
+	ver = flag.String("version", latest, "Version of Ableton Live to target. Defaults to latest version.\nUSAGE alrt -version \""+latest+"\"")
+	min = flag.Int("min", 110, "The minimum BPM")
+	max = flag.Int("max", 130, "The maximum BPM")
 	flag.Parse()
 	if *listVer {
 		fmt.Println("Installed versions of Ableton Live:")
@@ -84,6 +92,16 @@ func main() {
 		fmt.Printf("Minimum BPM specified (%d) is greater than Maximum BPM (%d). Swapping them!\n", *min, *max)
 		min, max = max, min
 	}
+
+	var rt int
+	switch {
+	case *cli:
+		rt = randomTempo(*min, *max)
+	default:
+		a := app.New()
+		rt = runGUI(a)
+	}
+
 	templLoc := getDefaultTemplate(*ver)
 	templZip, err := os.OpenFile(templLoc, os.O_RDWR, 0755)
 	if err != nil {
@@ -121,15 +139,6 @@ func main() {
 	if err := templ.Close(); err != nil {
 		fmt.Println(fmt.Errorf("Could not close gzip reader: %v", err))
 		os.Exit(1)
-	}
-
-	var rt int
-	switch {
-	case *cli:
-		rt = randomTempo(*min, *max)
-	default:
-		a := app.New()
-		rt = runGUI(a, *min, *max)
 	}
 
 	out := updateTempo(rt, data)
