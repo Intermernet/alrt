@@ -11,18 +11,26 @@ import (
 	"fyne.io/fyne/widget"
 )
 
-func runGUI(a fyne.App) int {
-	var rt int
+func runGUI(a fyne.App) (int, bool) {
+	var (
+		rt      int
+		success bool
+	)
 	a.Settings().SetTheme(theme.LightTheme())
-
-	w := a.NewWindow("Ableton Live Tempo Randomizer")
-
+	icon := fyne.NewStaticResource("icon", iconData)
+	if err != nil {
+		fmt.Println(fmt.Errorf("Could not load icon: %v", err))
+		os.Exit(1)
+	}
+	w := a.NewWindow("Ableton Live Randomize Tempo")
+	w.SetIcon(icon)
 	verLabel := widget.NewLabel("Installed Versions")
 	versions := widget.NewSelect(vers, func(string) {})
 	versions.SetSelected(*ver)
 	versions.OnChanged = func(string) {
 		*ver = versions.Selected
 	}
+
 	minLabel := widget.NewLabel("Minimum BPM")
 	maxLabel := widget.NewLabel("Maximum BPM")
 
@@ -33,7 +41,7 @@ func runGUI(a fyne.App) int {
 	maxEntry := widget.NewEntry()
 
 	randomizer := widget.NewButton("Gerenate Random BPM", func() {
-		rt = randomTempo(int(minSlider.Value), int(maxSlider.Value))
+		rt, success = randomTempo(int(minSlider.Value), int(maxSlider.Value))
 		a.Quit()
 	})
 
@@ -132,5 +140,5 @@ func runGUI(a fyne.App) int {
 	w.SetContent(all)
 
 	w.ShowAndRun()
-	return rt
+	return rt, success
 }

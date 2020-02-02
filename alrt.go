@@ -13,16 +13,18 @@ import (
 	"time"
 
 	"fyne.io/fyne/app"
+
+	"github.com/apenwarr/fixconsole" // Imported for windows console / GUI mixed use. Has no effect otherwise
 )
 
-func randomTempo(min, max int) int {
+func randomTempo(min, max int) (int, bool) {
 	tempo := min
 	if min != max {
 		rand.Seed(time.Now().UnixNano())
 		tempo = rand.Intn(max-min) + min
 	}
 	fmt.Printf("Setting new tempo to %d\n", tempo)
-	return tempo
+	return tempo, true
 }
 
 func updateTempo(tempo int, data []byte) []byte {
@@ -57,31 +59,45 @@ func listVersions() ([]string, error) {
 }
 
 var (
-	min  *int
-	max  *int
-	ver  *string
-	vers []string
-	err  error
+	min     *int
+	max     *int
+	ver     *string
+	vers    []string
+	success bool
+	err     error
 )
 
 func main() {
+	err = fixconsole.FixConsoleIfNeeded()
+	if err != nil {
+		fmt.Println(fmt.Errorf("Could not attach to console: %v", err))
+		os.Exit(1)
+	}
 	vers, err = listVersions()
 	if err != nil {
-		fmt.Println(fmt.Errorf("Could not enumerate installed Ableton Live versions"))
+		fmt.Println(fmt.Errorf("Could not enumerate installed Ableton Live versions: %v", err))
 		os.Exit(1)
 	}
 	latest := vers[len(vers)-1]
 	cli := flag.Bool("cli", false, "Run CLI Version")
 	listVer := flag.Bool("list", false, "List installed versions of Ableton Live")
+	help := flag.Bool("help", false, "Display this help message")
 	ver = flag.String("version", latest, "Version of Ableton Live to target. Defaults to latest version.\nUSAGE alrt -version \""+latest+"\"")
 	min = flag.Int("min", 110, "The minimum BPM")
 	max = flag.Int("max", 130, "The maximum BPM")
 	flag.Parse()
+	if *help {
+		fmt.Printf("\nUsage:\n")
+		flag.PrintDefaults()
+		pressEnterKey()
+		os.Exit(0)
+	}
 	if *listVer {
 		fmt.Println("Installed versions of Ableton Live:")
 		for _, v := range vers {
 			fmt.Printf("\t%s\n", v)
 		}
+		pressEnterKey()
 		os.Exit(0)
 	}
 	if *min < 20 || *min > 999 || *max < 20 || *max > 999 {
@@ -96,71 +112,74 @@ func main() {
 	var rt int
 	switch {
 	case *cli:
-		rt = randomTempo(*min, *max)
+		rt, success = randomTempo(*min, *max)
 	default:
 		a := app.New()
-		rt = runGUI(a)
+		rt, success = runGUI(a)
 	}
 
-	templLoc := getDefaultTemplate(*ver)
-	templZip, err := os.OpenFile(templLoc, os.O_RDWR, 0755)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not open file %s\n\n\t%v\n\nAbleton Live %s may not be installed, or \"Template.als\" has not been created", templLoc, err, *ver))
-		os.Exit(1)
-	}
-	defer templZip.Close()
-	templBak, err := os.OpenFile(templLoc+".bak", os.O_RDWR|os.O_CREATE, 0755)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not open backup file %s: %v", templLoc+".bak", err))
-		os.Exit(1)
-	}
-	defer templBak.Close()
-	n, err := io.Copy(templBak, templZip)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not backup template file %s to %s: %v", templLoc, templLoc+".bak", err))
-		os.Exit(1)
-	}
-	fmt.Printf("Backed up %d bytes from %s to %s\n", n, templLoc, templLoc+".bak")
-	_, err = templZip.Seek(0, 0)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not seek to beginning of file %s: %v", templLoc, err))
-		os.Exit(1)
-	}
-	templ, err := gzip.NewReader(templZip)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not decompress file %s: %v", templLoc, err))
-		os.Exit(1)
-	}
-	data, err := ioutil.ReadAll(templ)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not read from gzip reader: %v", err))
-		os.Exit(1)
-	}
-	if err := templ.Close(); err != nil {
-		fmt.Println(fmt.Errorf("Could not close gzip reader: %v", err))
-		os.Exit(1)
-	}
+	if success {
+		templLoc := getDefaultTemplate(*ver)
+		templZip, err := os.OpenFile(templLoc, os.O_RDWR, 0755)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not open file %s\n\n\t%v\n\nAbleton Live %s may not be installed, or \"Template.als\" has not been created", templLoc, err, *ver))
+			os.Exit(1)
+		}
+		defer templZip.Close()
+		templBak, err := os.OpenFile(templLoc+".bak", os.O_RDWR|os.O_CREATE, 0755)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not open backup file %s: %v", templLoc+".bak", err))
+			os.Exit(1)
+		}
+		defer templBak.Close()
+		n, err := io.Copy(templBak, templZip)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not backup template file %s to %s: %v", templLoc, templLoc+".bak", err))
+			os.Exit(1)
+		}
+		fmt.Printf("Backed up %d bytes from %s to %s\n", n, templLoc, templLoc+".bak")
+		_, err = templZip.Seek(0, 0)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not seek to beginning of file %s: %v", templLoc, err))
+			os.Exit(1)
+		}
+		templ, err := gzip.NewReader(templZip)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not decompress file %s: %v", templLoc, err))
+			os.Exit(1)
+		}
+		data, err := ioutil.ReadAll(templ)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not read from gzip reader: %v", err))
+			os.Exit(1)
+		}
+		if err := templ.Close(); err != nil {
+			fmt.Println(fmt.Errorf("Could not close gzip reader: %v", err))
+			os.Exit(1)
+		}
 
-	out := updateTempo(rt, data)
-	err = templZip.Truncate(0)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not truncate file %s: %v", templLoc, err))
-		os.Exit(1)
+		out := updateTempo(rt, data)
+		err = templZip.Truncate(0)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not truncate file %s: %v", templLoc, err))
+			os.Exit(1)
+		}
+		_, err = templZip.Seek(0, 0)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not seek to beginning of file %s: %v", templLoc, err))
+			os.Exit(1)
+		}
+		zipWriter := gzip.NewWriter(templZip)
+		nz, err := zipWriter.Write(out)
+		if err != nil {
+			fmt.Println(fmt.Errorf("Could not write template file: %v", err))
+			os.Exit(1)
+		}
+		if err := zipWriter.Close(); err != nil {
+			fmt.Println(fmt.Errorf("Could not close gzip writer: %v", err))
+			os.Exit(1)
+		}
+		fmt.Printf("Successfully wrote %d bytes (uncompressed) to %s\n", nz, templLoc)
+		pressEnterKey()
 	}
-	_, err = templZip.Seek(0, 0)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not seek to beginning of file %s: %v", templLoc, err))
-		os.Exit(1)
-	}
-	zipWriter := gzip.NewWriter(templZip)
-	nz, err := zipWriter.Write(out)
-	if err != nil {
-		fmt.Println(fmt.Errorf("Could not write template file: %v", err))
-		os.Exit(1)
-	}
-	if err := zipWriter.Close(); err != nil {
-		fmt.Println(fmt.Errorf("Could not close gzip writer: %v", err))
-		os.Exit(1)
-	}
-	fmt.Printf("Successfully wrote %d bytes (uncompressed) to %s\n", nz, templLoc)
 }
