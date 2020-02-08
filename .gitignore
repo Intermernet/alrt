@@ -1,2 +1,5 @@
 *.exe
 alrt
+*.bak
+*.syso
+alrt*.zip
